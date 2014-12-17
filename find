@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+
+DOCUMENTATION='''
+---
+module: find
+short_description: Use find to locate files on the host
+author: Marc Bosserhoff
+options:
+    dir:
+        required: true
+        description:
+            - Base dir of the find call
+    files:
+        required: false
+        description:
+            - Include files in find (default = true)
+    dirs:
+        required: false
+        description:
+            - Include directories in find (default = true)
+    links:
+        required: false
+        description:
+            - Include links in find (default = true)
+    filter:
+        required: false
+        description:
+            - Define a wildcard filter for find
+'''
+
+EXAMPLES='''
+- name: find all config files
+  find: dir=/opt/data/config filter=*.conf
+'''
+
+from ansible.module_utils.basic import *
+
+def main():
+
+    module = AnsibleModule(
+        argument_spec   = dict(
+            dir         = dict(required = True),
+            files       = dict(required = False, default = True, choices = BOOLEANS),
+            dirs        = dict(required = False, default = True, choices = BOOLEANS),
+            links       = dict(required = False, default = True, choices = BOOLEANS),
+            filter      = dict(required = False, default = "*")
+        ),
+        supports_check_mode = False
+    )
+
+    directory = module.params['dir'];
+    files = module.params['files'];
+    dirs = module.params['dirs'];
+    links = module.params['links'];
+    wildcardFilter = module.params['filter'];
+
+    fileList = []
+    for root, subfolders, files in os.walk(directory):
+        for file in files:
+            rel_path = os.path.join(root, file)
+            path = os.path.abspath(rel_path)
+            file_no_ext, ext = os.path.splitext(file)
+            path_no_ext = os.path.splitext(path)[0]
+            rel_path_no_ext = os.path.splitext(rel_path)[0]
+            fileList.append({
+                "file": file,
+                "file_no_ext" : file_no_ext,
+                "file_ext" : ext,
+                "rel_path": rel_path,
+                "rel_path_no_ext": rel_path_no_ext,
+                "path": path,
+                "path_no_ext": path_no_ext,
+                "isdir": os.path.isdir(rel_path),
+                "isfile": os.path.isfile(rel_path),
+                "islink": os.path.islink(rel_path)
+                })
+
+#    if result['failed']:
+#        module.fail_json(**result)
+
+    module.exit_json(result = fileList)
+
+main()
