@@ -33,6 +33,7 @@ EXAMPLES='''
   find: dir=/opt/data/config filter=*.conf
 '''
 
+import fnmatch
 from ansible.module_utils.basic import *
 
 def main():
@@ -49,35 +50,54 @@ def main():
     )
 
     directory = module.params['dir'];
-    files = module.params['files'];
-    dirs = module.params['dirs'];
-    links = module.params['links'];
+    files = module.boolean(module.params['files']);
+    dirs = module.boolean(module.params['dirs']);
+    links = module.boolean(module.params['links']);
     wildcardFilter = module.params['filter'];
 
-    fileList = []
-    for root, subfolders, files in os.walk(directory):
-        for file in files:
-            rel_path = os.path.join(root, file)
-            path = os.path.abspath(rel_path)
-            file_no_ext, ext = os.path.splitext(file)
-            path_no_ext = os.path.splitext(path)[0]
-            rel_path_no_ext = os.path.splitext(rel_path)[0]
-            fileList.append({
-                "file": file,
-                "file_no_ext" : file_no_ext,
-                "file_ext" : ext,
-                "rel_path": rel_path,
-                "rel_path_no_ext": rel_path_no_ext,
-                "path": path,
-                "path_no_ext": path_no_ext,
-                "isdir": os.path.isdir(rel_path),
-                "isfile": os.path.isfile(rel_path),
-                "islink": os.path.islink(rel_path)
-                })
+    try:
+        fileList = []
+        if os.path.exists(directory):
+            for root, subfolders, foundFiles in os.walk(directory):
+                for file in foundFiles:
+                    rel_path = os.path.join(root, file)
+                    path = os.path.abspath(rel_path)
+                    file_no_ext, ext = os.path.splitext(file)
+                    path_no_ext = os.path.splitext(path)[0]
+                    rel_path_no_ext = os.path.splitext(rel_path)[0]
 
-#    if result['failed']:
-#        module.fail_json(**result)
+                    isdir = os.path.isdir(rel_path)
+                    isfile = os.path.isfile(rel_path)
+                    islink = os.path.islink(rel_path)
 
-    module.exit_json(result = fileList)
+                    includeEntry = (fnmatch.fnmatch(file, wildcardFilter))
+                    if not dirs and isdir:
+                        includeEntry = False
+                    if not files and isfile:
+                        includeEntry = False
+                    if not links and islink:
+                        includeEntry = False
+
+                    if includeEntry:
+                        fileList.append({
+                            "file": file,
+                            "file_no_ext" : file_no_ext,
+                            "file_ext" : ext,
+                            "rel_path": rel_path,
+                            "rel_path_no_ext": rel_path_no_ext,
+                            "path": path,
+                            "path_no_ext": path_no_ext,
+                            "isdir": isdir,
+                            "isfile": isfile,
+                            "islink": islink
+                            })
+        else:
+            raise IOError("Directory does not exist: %s" % directory)
+
+        # Everything went ok? Get out the result
+        module.exit_json(result = fileList)
+
+    except Exception, e:
+        module.fail_json(msg = e.args)
 
 main()
