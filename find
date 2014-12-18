@@ -60,8 +60,10 @@ def main():
         if os.path.exists(directory):
             for root, subfolders, foundFiles in os.walk(directory):
                 for file in foundFiles:
-                    rel_path = os.path.join(root, file)
-                    path = os.path.abspath(rel_path)
+                    path = os.path.abspath(os.path.join(root, file))
+                    rel_path = os.path.relpath(path, directory)
+                    rel_dir = os.path.relpath(root, directory)
+
                     file_no_ext, ext = os.path.splitext(file)
                     path_no_ext = os.path.splitext(path)[0]
                     rel_path_no_ext = os.path.splitext(rel_path)[0]
@@ -80,9 +82,11 @@ def main():
 
                     if includeEntry:
                         fileList.append({
+                            "root": root,
                             "file": file,
                             "file_no_ext" : file_no_ext,
                             "file_ext" : ext,
+                            "rel_dir" : rel_dir,
                             "rel_path": rel_path,
                             "rel_path_no_ext": rel_path_no_ext,
                             "path": path,
